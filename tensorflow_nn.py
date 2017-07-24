@@ -1,27 +1,25 @@
+# Reference - https://gist.github.com/danijar/8663d3bbfd586bffecf6a0094cd116f2
+import os
 import warnings
+
 warnings.filterwarnings("ignore")
-from data import load
-from skimage.color import rgb2gray
+from data import belgiumTS
 import tensorflow as tf
-from sklearn.preprocessing import LabelBinarizer
+import numpy as np
+import functools
 
-RESIZE_PIX = 28
 
+def lazy_property(function):
+    attribute = '_cache_' + function.__name__
 
-def read_data():
-    data_obj = load.data_processing()
-    train_imgs, train_labels = data_obj.training_data()
-    test_imgs, test_labels = data_obj.testing_data()
+    @property
+    @functools.wraps(function)
+    def decorator(self):
+        if not hasattr(self, attribute):
+            setattr(self, attribute, function(self))
+        return getattr(self, attribute)
 
-    print("Resize images")
-    train_imgs = data_obj.resize_imgs(train_imgs, (RESIZE_PIX, RESIZE_PIX))
-    test_imgs = data_obj.resize_imgs(test_imgs, (RESIZE_PIX, RESIZE_PIX))
-
-    lb = LabelBinarizer()
-    train_labels = lb.fit_transform(train_labels)
-    test_labels = lb.transform(test_labels)
-
-    return train_imgs, train_labels, test_imgs, test_labels
+    return decorator
 
 
 def weight_variable(shape):
@@ -36,68 +34,63 @@ def bias_variable(shape):
     return tf.Variable(initial)
 
 
-def nn_model(x):
-    # Layer 1 weights
-    w_layer1 = weight_variable(shape=[784, 10])
-    b_layer1 = bias_variable(shape=[10])
+class Model:
+    def __init__(self, image, label):
+        self.image = image
+        self.label = label
+        self.prediction
+        self.optimize
+        self.error
 
-    # Layer 2 weights
-    w_layer2 = weight_variable(shape=[10, 62])
-    b_layer2 = bias_variable(shape=[NUM_CLASSES])
+    @lazy_property
+    def prediction(self):
+        # num_samples = int(self.image.shape[0])
+        num_features = int(self.image.shape[1])
+        num_classes = int(self.label.shape[1])
+        num_hidden_nodes1 = 10
 
-    input_layer = tf.matmul(x, w_layer1) + b_layer1
-    hidden_layer = tf.nn.relu(input_layer)
-    output_layer = tf.matmul(hidden_layer, w_layer2) + b_layer2
+        w_layer1 = weight_variable(shape=[num_features, num_hidden_nodes1])
+        b_layer1 = bias_variable(shape=[num_hidden_nodes1])
 
-    return output_layer
+        # Layer 2 weights
+        w_layer2 = weight_variable(shape=[num_hidden_nodes1, num_classes])
+        b_layer2 = bias_variable(shape=[num_classes])
 
+        input_layer = tf.matmul(self.image, w_layer1) + b_layer1
+        hidden_layer = tf.nn.relu(input_layer)
+        output_layer = tf.matmul(hidden_layer, w_layer2) + b_layer2
 
-def run_nn_model():
-    global NUM_CLASSES
-    x_train, y_train, x_test, y_test = read_data()
-    NUM_CLASSES = y_train.shape[1]
+        return output_layer
 
-    rgb_gray = True
+    @lazy_property
+    def optimize(self):
+        cross_entropy = tf.reduce_mean(
+            tf.nn.softmax_cross_entropy_with_logits(labels=self.label, logits=self.prediction))
+        optimizer = tf.train.AdamOptimizer(learning_rate=1e-4)
+        return optimizer.minimize(cross_entropy)
 
-    if rgb_gray:
-        x_train = rgb2gray(x_train)
-        x_test = rgb2gray(x_test)
+    @lazy_property
+    def error(self):
+        correct_predictions = tf.equal(tf.argmax(self.label, 1), tf.argmax(self.prediction, 1))
+        # Evaluate model
+        accuracy = tf.reduce_mean(tf.cast(correct_predictions, tf.float32))
+        return accuracy
 
-    print("Training images: ", x_train.shape)
-    print("Training labels: ", y_train.shape)
+def main():
+    belgiumTS_data = belgiumTS.load_BelgiumTS()
+    image = tf.placeholder(tf.float32, [None, 784])
+    label = tf.placeholder(tf.float32, [None, 62])
+    model = Model(image, label)
+    sess = tf.Session()
+    sess.run(tf.global_variables_initializer())
 
-    batch_size = 512
-
-    # Flatten out images
-    x_train = x_train.reshape(-1, RESIZE_PIX*RESIZE_PIX)
-    x_test = x_test.reshape(-1, RESIZE_PIX*RESIZE_PIX)
-
-
-    # Define placeholders for x and y
-    x = tf.placeholder(tf.float32, [None, RESIZE_PIX*RESIZE_PIX])
-    y_ = tf.placeholder(tf.float32, [None, NUM_CLASSES])
-
-    y_nn = nn_model(x)
-
-    # Loss function
-    cross_entropy = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(labels=y_, logits=y_nn))
-    train_step = tf.train.AdamOptimizer(learning_rate=1e-4).minimize(cross_entropy)
-    correct_predictions = tf.equal(tf.argmax(y_nn, 1), tf.argmax(y_, 1))
-    accuracy = tf.reduce_mean(tf.cast(correct_predictions, tf.float32))
-
-    with tf.Session() as sess:
-        sess.run(tf.global_variables_initializer())
-        for step in range(10):
-            offset = (step*batch_size) % (y_train.shape[0] - batch_size)
-            minibatch_data = x_train[offset:(offset+batch_size),:]
-            minibatch_labels = y_train[offset:(offset+batch_size)]
-            train_step.run(feed_dict={x:minibatch_data, y_:minibatch_labels})
-
-            train_accuracy = accuracy.eval(feed_dict={x: minibatch_data, y_: minibatch_labels})
-            print("Step %d, training accuracy %g" % (step, train_accuracy))
-
-        print("Test accuracy %g" % accuracy.eval(feed_dict={x:x_test, y_:y_test}))
-
-
+    for _ in range(200):
+        images, labels = belgiumTS_data.validation.images, belgiumTS_data.validation.labels
+        acc = sess.run(model.error, {image: images, label: labels})
+        print('Test accuracy {:6.2f}%'.format(100 * acc))
+        for _ in range(61):
+            images, labels = belgiumTS_data.train.next_batch(75)
+            sess.run(model.optimize, {image: images, label: labels})
+        print(belgiumTS_data.train.epochs_completed)
 if __name__ == '__main__':
-    run_nn_model()
+    main()

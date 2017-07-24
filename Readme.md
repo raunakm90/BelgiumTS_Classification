@@ -16,3 +16,11 @@ Git does not store empty directories. .gitkeep enforces directory persistence.
 
 3. Create .gitignore 
 echo $null >> .gitignore
+
+## References
+
+1. Deep MNIST TensorFlow tutorial - https://github.com/tensorflow/tensorflow/blob/r1.2/tensorflow/examples/tutorials/mnist/mnist_deep.py
+2. Blog post - https://beckernick.github.io/neural-network-scratch/
+3. Tutorial for Belgium TS data set - https://www.datacamp.com/community/tutorials/tensorflow-tutorial#gs.C4=SPAQ
+4. Belgium TS data set - http://btsd.ethz.ch/shareddata/
+5. Data extraction and reading - https://github.com/tensorflow/tensorflow/blob/master/tensorflow/contrib/learn/python/learn/datasets/mnist.py

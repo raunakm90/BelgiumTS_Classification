@@ -72,7 +72,7 @@ class DataSet():
             self._index_in_epoch = batch_size - batch_rest_examples
             end = self._index_in_epoch
             batch_new_images = self._images[start:end]
-            batch_new_labels = self._images[start:end]
+            batch_new_labels = self._labels[start:end]
             return np.concatenate((batch_rest_images, batch_new_images), axis=0), np.concatenate(
                 (batch_rest_labels, batch_new_labels), axis=0)
         else:
@@ -139,11 +139,8 @@ def read_datasets(data_dir="./data/", one_hot=True, rgb_gray=True, resize_pix=28
             'Validation size should be between 0 and 1. Received: {}.'
                 .format(validation_size))
 
-    print(train_imgs.shape)
-    print(train_labels.shape)
-
     # Stratified shuffle split to creat validation images
-    new_train_imgs, new_train_labels, val_imgs, val_labels = train_test_split(train_imgs, train_labels,
+    new_train_imgs, val_imgs, new_train_labels, val_labels = train_test_split(train_imgs, train_labels,
                                                                               test_size=validation_size,
                                                                               random_state=1234, stratify=train_labels)
 
@@ -153,6 +150,6 @@ def read_datasets(data_dir="./data/", one_hot=True, rgb_gray=True, resize_pix=28
 
     return Datasets(train=train, test=test, validation=validation)
 
-
+# @TODO: Add **options
 def load_BelgiumTS():
     return read_datasets()
