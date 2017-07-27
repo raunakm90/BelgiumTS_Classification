@@ -1,6 +1,7 @@
 import sys
 
 sys.path.append("D:/ML_Projects/BelgiumTS")
+import os
 import tensorflow as tf
 from data.belgiumTS import load_BelgiumTS
 from utils.model_session import ModelSession
@@ -26,6 +27,7 @@ tf.flags.DEFINE_integer(flag_name="nb_epochs", default_value=100,
 # Tesnorboard Parameters
 tf.flags.DEFINE_string(flag_name="log_dir", default_value="./simple_nn/log_dir/",
                        docstring="Log directory for storing model performance")
+tf.flags.DEFINE_bool(flag_name="clean_log", default_value=True, docstring="Clean log files")
 
 FLAGS = tf.flags.FLAGS
 FLAGS._parse_flags()
@@ -49,6 +51,18 @@ class BelgiumTS_NN(ModelSession):
             initial = tf.constant(0.1, shape=shape)
             return tf.Variable(initial, name=name)
 
+        def variable_summaries(var):
+            """Attach a lot of summaries to a Tensor (for TensorBoard visualization)."""
+            with tf.name_scope('summaries'):
+                mean = tf.reduce_mean(var)
+                tf.summary.scalar('mean', mean)
+                with tf.name_scope('stddev'):
+                    stddev = tf.sqrt(tf.reduce_mean(tf.square(var - mean)))
+                tf.summary.scalar('stddev', stddev)
+                tf.summary.scalar('max', tf.reduce_max(var))
+                tf.summary.scalar('min', tf.reduce_min(var))
+                tf.summary.histogram('histogram', var)
+
         # Keeps track of iterations in the graph across calls to run()
         iteration = tf.Variable(initial_value=0, trainable=False, name="iteration")
 
@@ -67,12 +81,15 @@ class BelgiumTS_NN(ModelSession):
             w_layer1 = weight_variable(shape=[FLAGS.image_size * FLAGS.image_size, layer_1])
             b_layer1 = bias_variable(shape=[layer_1], name="bias")
             h_layer1 = tf.nn.relu(tf.matmul(x, w_layer1) + b_layer1)
+            variable_summaries(w_layer1)
 
         # Variable scope to Layer 2
         with tf.variable_scope("output_layer"):
             w_layer2 = weight_variable(shape=[layer_1, FLAGS.num_classes])
             b_layer2 = bias_variable(shape=[FLAGS.num_classes], name="bias")
             y_logits = tf.matmul(h_layer1, w_layer2) + b_layer2
+            variable_summaries(w_layer2)
+            tf.summary.histogram('logits', y_logits)
 
         # Variable scope to train neural network
         with tf.variable_scope("train"):
@@ -151,10 +168,29 @@ class BelgiumTS_NN(ModelSession):
         return self._tensor("evaluation/accuracy:0")
 
 
+def clean_log_files(log_dir_path):
+    """
+    Clean log files for the log directory
+    :param log_dir_path: path to log directory
+    :return: None
+    """
+    dir_list = [x[0] for x in os.walk(log_dir_path)]
+    for dir_path in dir_list:
+        for f in os.listdir(dir_path):
+            file_path = os.path.join(dir_path, f)
+            try:
+                if os.path.isfile(file_path):
+                    os.remove(file_path)
+            except Exception as e:
+                print(e)
+
+
 def main(argv=None):
     belgiumTS_data = load_BelgiumTS()
     training_data = belgiumTS_data.train
     validation_data = belgiumTS_data.validation
+    if FLAGS.clean_log:
+        clean_log_files(FLAGS.log_dir)
 
     model = BelgiumTS_NN.create(layer_1=10)
     # print(model)
@@ -173,9 +209,6 @@ def main(argv=None):
             train_writer.add_summary(summary, iteration)
     test_writer.close()
     train_writer.close()
-    # if iteration % 10 == 0:
-    #     training_accuracy = model.test(x, y)
-    #     print("%s: Training Accuracy %0.4f" % (model, training_accuracy))
 
 
 if __name__ == '__main__':
