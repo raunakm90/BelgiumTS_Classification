@@ -1,7 +1,6 @@
 import sys
 
 sys.path.append("D:/ML_Projects/BelgiumTS")
-import os
 import tensorflow as tf
 from data.belgiumTS import load_BelgiumTS
 from utils.model_session import ModelSession
@@ -224,7 +223,7 @@ def test(testing_data, merged):
 
 
 def main(argv=None):
-    belgiumTS_data = load_BelgiumTS()
+    belgiumTS_data = load_BelgiumTS(validation_size=FLAGS.val_percentage, resize_pix=FLAGS.image_size)
     training_data = belgiumTS_data.train
     validation_data = belgiumTS_data.validation
     testing_data = belgiumTS_data.test

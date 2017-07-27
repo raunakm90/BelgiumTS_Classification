@@ -151,5 +151,5 @@ def read_datasets(data_dir="./data/", one_hot=True, rgb_gray=True, resize_pix=28
     return Datasets(train=train, test=test, validation=validation)
 
 # @TODO: Add **options
-def load_BelgiumTS():
-    return read_datasets()
+def load_BelgiumTS(**kwargs):
+    return read_datasets(**kwargs)

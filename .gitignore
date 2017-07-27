@@ -1,5 +1,6 @@
 # exclude data from source
 data/
-.ipynb-checkpoints
+.ipynb-checkpoints/
 .idea/
-.ipynb_checkpoints/
+simple_nn/log_dir
+simple_nn/model_dir
