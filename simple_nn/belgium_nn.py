@@ -91,9 +91,10 @@ class BelgiumTS_NN(ModelSession):
             self.hidden_layer_1.get_shape()[0], self.session.run(self.iteration)
         )
 
-    def train(self, x, y, learning_rate, merged, train_writer):
+    def train(self, x, y, learning_rate, merged):
         """
         Train model using train_step defined in our graph definition
+        :param merged: tf.summary.merge_all()
         :param x: Input images
         :param y: Labels
         :param learning_rate: Learning rate for optimization
@@ -106,16 +107,17 @@ class BelgiumTS_NN(ModelSession):
 
         return summary, step
 
-    def test(self, x, y):
+    def test(self, x, y, merged):
         """
         Evaluate model performance based on the trained object
         :param x: Images
         :param y: Labels
         :return: accuracy
         """
-        return self.session.run(self.accuracy,
-                                feed_dict={self.x: x,
-                                           self.y: y})
+        summary, accuracy = self.session.run([merged, self.accuracy],
+                                             feed_dict={self.x: x,
+                                                        self.y: y})
+        return summary, accuracy
 
     def _tensor(self, name):
         return self.session.graph.get_tensor_by_name(name)
@@ -158,15 +160,18 @@ def main(argv=None):
     # print(model)
 
     merged = tf.summary.merge_all()
-    train_writer = tf.summary.FileWriter(FLAGS.log_dir, model.session.graph)
+    train_writer = tf.summary.FileWriter(FLAGS.log_dir + "train", model.session.graph)
+    test_writer = tf.summary.FileWriter(FLAGS.log_dir + "test", model.session.graph)
 
-    for _ in range(FLAGS.nb_epochs):
-        validation_accuracy = model.test(validation_data.images, validation_data.labels)
+    for i in range(FLAGS.nb_epochs):
+        summary, validation_accuracy = model.test(validation_data.images, validation_data.labels, merged)
+        test_writer.add_summary(summary, i)
         print("%s: Validation Accuracy %0.4f" % (model, validation_accuracy))
         for _ in range(training_data.num_examples // FLAGS.batch_size):
             x, y = training_data.next_batch(FLAGS.batch_size)
-            summary, iteration = model.train(x, y, FLAGS.learning_rate, merged, train_writer)
+            summary, iteration = model.train(x, y, FLAGS.learning_rate, merged)
             train_writer.add_summary(summary, iteration)
+    test_writer.close()
     train_writer.close()
     # if iteration % 10 == 0:
     #     training_accuracy = model.test(x, y)
