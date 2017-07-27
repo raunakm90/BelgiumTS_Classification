@@ -31,6 +31,7 @@ class ModelSession():
         session = tf.Session()
         # Create graph in this session
         with session.graph.as_default():
+            tf.set_random_seed(147)
             cls.create_graph(**kwargs)
         # Initialize all global variables
         session.run(tf.global_variables_initializer())
