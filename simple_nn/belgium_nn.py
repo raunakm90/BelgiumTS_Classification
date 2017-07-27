@@ -1,6 +1,9 @@
+import sys
+
+sys.path.append("D:/ML_Projects/BelgiumTS")
 import tensorflow as tf
-from model_session import ModelSession
-from data import belgiumTS
+from data.belgiumTS import load_BelgiumTS
+from utils.model_session import ModelSession
 
 # tf.flags is a thin wrapper around argparse.
 # Define all hyper-parameters as FLAGS.
@@ -17,8 +20,12 @@ tf.flags.DEFINE_integer(flag_name="layer1_units", default_value=20, docstring="N
 
 # Training Parameters
 tf.flags.DEFINE_integer(flag_name="batch_size", default_value=64, docstring="Batch Size (default: 64)")
-tf.flags.DEFINE_integer(flag_name="nb_epochs", default_value=10,
+tf.flags.DEFINE_integer(flag_name="nb_epochs", default_value=100,
                         docstring="Number of training epochs/iterations (default: 100")
+
+# Tesnorboard Parameters
+tf.flags.DEFINE_string(flag_name="log_dir", default_value="./simple_nn/log_dir/",
+                       docstring="Log directory for storing model performance")
 
 FLAGS = tf.flags.FLAGS
 FLAGS._parse_flags()
@@ -69,9 +76,10 @@ class BelgiumTS_NN(ModelSession):
 
         # Variable scope to train neural network
         with tf.variable_scope("train"):
-            cross_entropy = tf.nn.softmax_cross_entropy_with_logits(labels=y, logits=y_logits)
+            cross_entropy = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(labels=y, logits=y_logits))
             tf.train.AdamOptimizer(learning_rate=learning_rate).minimize(cross_entropy, global_step=iteration,
                                                                          name="train_step")
+        tf.summary.scalar('Loss', cross_entropy)
 
         # Evaluation
         with tf.variable_scope("evaluation"):
@@ -79,11 +87,11 @@ class BelgiumTS_NN(ModelSession):
             tf.reduce_mean(tf.cast(correct_prediction, tf.float32), name="accuracy")
 
     def __str__(self):
-        return "BelgiumTS Simple NN (%d, Iteration %d)" % (
+        return "BelgiumTS Simple NN (Layer 1 Units: %d, Iteration %d)" % (
             self.hidden_layer_1.get_shape()[0], self.session.run(self.iteration)
         )
 
-    def train(self, x, y, learning_rate):
+    def train(self, x, y, learning_rate, merged, train_writer):
         """
         Train model using train_step defined in our graph definition
         :param x: Input images
@@ -91,10 +99,12 @@ class BelgiumTS_NN(ModelSession):
         :param learning_rate: Learning rate for optimization
         :return: Iteration number
         """
-        return self.session.run([self.train_step, self.iteration],
-                                feed_dict={self.x: x,
-                                           self.y: y,
-                                           self.learning_rate: learning_rate})[1]
+        summary, _, step = self.session.run([merged, self.train_step, self.iteration],
+                                            feed_dict={self.x: x,
+                                                       self.y: y,
+                                                       self.learning_rate: learning_rate})
+
+        return summary, step
 
     def test(self, x, y):
         """
@@ -140,22 +150,27 @@ class BelgiumTS_NN(ModelSession):
 
 
 def main(argv=None):
-    belgiumTS_data = belgiumTS.load_BelgiumTS()
+    belgiumTS_data = load_BelgiumTS()
     training_data = belgiumTS_data.train
     validation_data = belgiumTS_data.validation
 
     model = BelgiumTS_NN.create(layer_1=10)
-    print(model)
+    # print(model)
+
+    merged = tf.summary.merge_all()
+    train_writer = tf.summary.FileWriter(FLAGS.log_dir, model.session.graph)
 
     for _ in range(FLAGS.nb_epochs):
         validation_accuracy = model.test(validation_data.images, validation_data.labels)
         print("%s: Validation Accuracy %0.4f" % (model, validation_accuracy))
         for _ in range(training_data.num_examples // FLAGS.batch_size):
             x, y = training_data.next_batch(FLAGS.batch_size)
-            iteration = model.train(x, y, FLAGS.learning_rate)
-            # if iteration % 10 == 0:
-            #     training_accuracy = model.test(x, y)
-            #     print("%s: Training Accuracy %0.4f" % (model, training_accuracy))
+            summary, iteration = model.train(x, y, FLAGS.learning_rate, merged, train_writer)
+            train_writer.add_summary(summary, iteration)
+    train_writer.close()
+    # if iteration % 10 == 0:
+    #     training_accuracy = model.test(x, y)
+    #     print("%s: Training Accuracy %0.4f" % (model, training_accuracy))
 
 
 if __name__ == '__main__':
