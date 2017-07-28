@@ -25,3 +25,4 @@ echo $null >> .gitignore
 4. Belgium TS data set - http://btsd.ethz.ch/shareddata/
 5. Data extraction and reading - https://github.com/tensorflow/tensorflow/blob/master/tensorflow/contrib/learn/python/learn/datasets/mnist.py
 6. Code structure: an Object pattern for TensorFlow - https://github.com/wpm/tf_model_session
+7. [Radu Timofte*, Markus Mathias*, Rodrigo Benenson, and Luc Van Gool, Traffic Sign Recognition - How far are we from the solution?, International Joint Conference on Neural Networks (IJCNN 2013), August 2013, Dallas, USA. (* equal contributions)](http://btsd.ethz.ch/shareddata/publications/Mathias-IJCNN-2013.pdf)

@@ -16,7 +16,9 @@ tf.flags.DEFINE_integer(flag_name="num_classes", default_value=62, docstring="Nu
 
 # Model Hyperparameters
 tf.flags.DEFINE_float(flag_name="learning_rate", default_value=0.01, docstring="Learning Rate for optimization")
-tf.flags.DEFINE_integer(flag_name="layer1_units", default_value=20, docstring="Number of layer 1 units")
+tf.flags.DEFINE_integer(flag_name="layer1_units", default_value=784, docstring="Number of units layer 1")
+tf.flags.DEFINE_integer(flag_name="layer2_units", default_value=196, docstring="Number of units layer 2")
+tf.flags.DEFINE_integer(flag_name="layer3_units", default_value=49, docstring="Number of units layer 3")
 
 # Training Parameters
 tf.flags.DEFINE_integer(flag_name="batch_size", default_value=64, docstring="Batch Size (default: 64)")
@@ -41,7 +43,7 @@ class BelgiumTS_NN(ModelSession):
     """
 
     @staticmethod
-    def create_graph(layer_1=32):
+    def create_graph(layer_1, layer_2, layer_3):
         def weight_variable(shape):
             """weight_variable generates a weight variable of a given shape."""
             initial = tf.truncated_normal(shape, stddev=0.1)
@@ -82,14 +84,28 @@ class BelgiumTS_NN(ModelSession):
             w_layer1 = weight_variable(shape=[FLAGS.image_size * FLAGS.image_size, layer_1])
             b_layer1 = bias_variable(shape=[layer_1], name="bias")
             h_layer1 = tf.nn.relu(tf.matmul(x, w_layer1) + b_layer1)
-            variable_summaries(w_layer1)
+            # variable_summaries(w_layer1)
 
         # Variable scope to Layer 2
+        with tf.variable_scope("layer_2"):
+            w_layer2 = weight_variable(shape=[layer_1, layer_2])
+            b_layer2 = bias_variable(shape=[layer_2], name="bias")
+            h_layer2 = tf.nn.relu(tf.matmul(h_layer1, w_layer2) + b_layer2)
+            # variable_summaries(w_layer2)
+
+        # Variable scope to Layer 3
+        with tf.variable_scope("layer_3"):
+            w_layer3 = weight_variable(shape=[layer_2, layer_3])
+            b_layer3 = bias_variable(shape=[layer_3], name="bias")
+            h_layer3 = tf.nn.relu(tf.matmul(h_layer2, w_layer3) + b_layer3)
+            # variable_summaries(w_layer1)
+
+        # Variable scope to Output Layer
         with tf.variable_scope("output_layer"):
-            w_layer2 = weight_variable(shape=[layer_1, FLAGS.num_classes])
-            b_layer2 = bias_variable(shape=[FLAGS.num_classes], name="bias")
-            y_logits = tf.matmul(h_layer1, w_layer2) + b_layer2
-            variable_summaries(w_layer2)
+            w_output_layer = weight_variable(shape=[layer_3, FLAGS.num_classes])
+            b_output_layer = bias_variable(shape=[FLAGS.num_classes], name="bias")
+            y_logits = tf.matmul(h_layer3, w_output_layer) + b_output_layer
+            # variable_summaries(w_output_layer)
             tf.summary.histogram('logits', y_logits)
 
         # Variable scope to train neural network
@@ -105,8 +121,9 @@ class BelgiumTS_NN(ModelSession):
             tf.reduce_mean(tf.cast(correct_prediction, tf.float32), name="accuracy")
 
     def __str__(self):
-        return "BelgiumTS Simple NN (Layer 1 Units: %d, Iteration %d)" % (
-            self.hidden_layer_1.get_shape()[0], self.session.run(self.iteration)
+        return "BelgiumTS Simple NN (Layer 1 Units: %d, Layer 2 Units: %d, Layer 3 Unites:%d, Iteration %d)" % (
+            self.hidden_layer_1.get_shape()[0], self.hidden_layer_2.get_shape()[0], self.hidden_layer_3.get_shape()[0],
+            self.session.run(self.iteration)
         )
 
     def train(self, x, y, learning_rate, merged):
@@ -157,6 +174,14 @@ class BelgiumTS_NN(ModelSession):
         return self._tensor("layer_1/bias:0")
 
     @property
+    def hidden_layer_2(self):
+        return self._tensor("layer_2/bias:0")
+
+    @property
+    def hidden_layer_3(self):
+        return self._tensor("layer_3/bias:0")
+
+    @property
     def train_step(self):
         return self._tensor("train/train_step:0")
 
@@ -193,7 +218,7 @@ def clean_log_files(log_dir_path):
 
 
 def train(training_data, validation_data):
-    model = BelgiumTS_NN.create(layer_1=10)
+    model = BelgiumTS_NN.create(layer_1=FLAGS.layer1_units, layer_2=FLAGS.layer2_units, layer_3=FLAGS.layer3_units)
     # print(model)
 
     merged = tf.summary.merge_all()
