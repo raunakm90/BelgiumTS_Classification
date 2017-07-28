@@ -24,3 +24,4 @@ echo $null >> .gitignore
 3. Tutorial for Belgium TS data set - https://www.datacamp.com/community/tutorials/tensorflow-tutorial#gs.C4=SPAQ
 4. Belgium TS data set - http://btsd.ethz.ch/shareddata/
 5. Data extraction and reading - https://github.com/tensorflow/tensorflow/blob/master/tensorflow/contrib/learn/python/learn/datasets/mnist.py
+6. Code structure: an Object pattern for TensorFlow - https://github.com/wpm/tf_model_session
