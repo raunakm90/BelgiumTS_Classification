@@ -16,7 +16,7 @@ Datasets = collections.namedtuple('Datasets', ['train', 'validation', 'test'])
 class DataSet():
     def __init__(self, images, labels):
         """Construct a dataset"""
-        np.random.seed(1234)
+        np.random.seed(4786)
         assert images.shape[0] == labels.shape[0], ('images.shape: %s labels.shape: %s' % (images.shape, labels.shape))
         self._num_examples = images.shape[0]
 

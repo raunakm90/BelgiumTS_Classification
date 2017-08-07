@@ -4,6 +4,8 @@ sys.path.append("D:/ML_Projects/BelgiumTS")
 import tensorflow as tf
 from data.belgiumTS import load_BelgiumTS
 from utils.model_session import ModelSession
+import numpy as np
+from utils.generate_report import plot_confusion_matrix
 
 # tf.flags is a thin wrapper around argparse.
 # Define all hyper-parameters as FLAGS.
@@ -21,11 +23,11 @@ tf.flags.DEFINE_integer(flag_name="layer2_units", default_value=196, docstring="
 tf.flags.DEFINE_integer(flag_name="layer3_units", default_value=49, docstring="Number of units layer 3")
 
 # Training Parameters
-tf.flags.DEFINE_integer(flag_name="batch_size", default_value=64, docstring="Batch Size (default: 64)")
+tf.flags.DEFINE_integer(flag_name="batch_size", default_value=60, docstring="Batch Size (default: 60)")
 tf.flags.DEFINE_integer(flag_name="nb_epochs", default_value=100,
                         docstring="Number of training epochs/iterations (default: 100")
 
-# Tesnorboard Parameters
+# Tensorboard Parameters
 tf.flags.DEFINE_string(flag_name="log_dir", default_value="./simple_nn/log_dir/",
                        docstring="Log directory for storing model performance")
 tf.flags.DEFINE_bool(flag_name="clean_log", default_value=True, docstring="Clean log files")
@@ -118,6 +120,7 @@ class BelgiumTS_NN(ModelSession):
         # Evaluation
         with tf.variable_scope("evaluation"):
             correct_prediction = tf.equal(tf.argmax(y_logits, 1), tf.argmax(y, 1))
+            y_pred = tf.argmax(y_logits, 1, name='predictions')
             tf.reduce_mean(tf.cast(correct_prediction, tf.float32), name="accuracy")
 
     def __str__(self):
@@ -161,10 +164,10 @@ class BelgiumTS_NN(ModelSession):
         :param y: Labels
         :return: accuracy
         """
-        accuracy = self.session.run(self.accuracy,
+        accuracy, preds = self.session.run([self.accuracy, self.predictions],
                                     feed_dict={self.x: x,
                                                self.y: y})
-        return accuracy
+        return accuracy, preds
 
     def _tensor(self, name):
         return self.session.graph.get_tensor_by_name(name)
@@ -172,6 +175,10 @@ class BelgiumTS_NN(ModelSession):
     @property
     def hidden_layer_1(self):
         return self._tensor("layer_1/bias:0")
+
+    @property
+    def predictions(self):
+        return self._tensor("evaluation/predictions:0")
 
     @property
     def hidden_layer_2(self):
@@ -226,13 +233,14 @@ def train(training_data, validation_data):
     val_writer = tf.summary.FileWriter(FLAGS.log_dir + "val", model.session.graph)
 
     for i in range(FLAGS.nb_epochs):
-        summary, validation_accuracy = model.eval(validation_data.images, validation_data.labels, merged)
+        summary, valid_accuracy = model.eval(validation_data.images, validation_data.labels, merged)
         val_writer.add_summary(summary, i)
-        print("%s: Validation Accuracy %0.4f" % (model, validation_accuracy))
+        print("%s: Validation Accuracy %0.4f" % (model, valid_accuracy))
         for _ in range(training_data.num_examples // FLAGS.batch_size):
             x, y = training_data.next_batch(FLAGS.batch_size)
             summary, iteration = model.train(x, y, FLAGS.learning_rate, merged)
-            train_writer.add_summary(summary, iteration)
+            # train_writer.add_summary(summary, iteration)
+        train_writer.add_summary(summary, iteration)
     val_writer.close()
     train_writer.close()
     # Save Final Model
@@ -243,8 +251,10 @@ def train(training_data, validation_data):
 def test(testing_data, merged):
     model = BelgiumTS_NN.restore(FLAGS.model_dir)
     # Evaluate on test data
-    test_accuracy = model.test(testing_data.images, testing_data.labels)
+    test_accuracy, test_preds = model.test(testing_data.images, testing_data.labels)
+    np.savez("./simple_nn/Test_Preds.npz", test_preds)
     print("%s: Testing Accuracy %0.4f" % (model, test_accuracy))
+    return test_preds
 
 
 def main(argv=None):
@@ -261,7 +271,9 @@ def main(argv=None):
     print("Training model parameters")
     train(training_data, validation_data)
     print("Evaluating on Testing data")
-    test(testing_data, None)
+    test_pred = test(testing_data, None)
+    plot_confusion_matrix(y_true=np.argmax(testing_data.labels, axis=1), y_pred=test_pred,
+                          file_name="./simple_nn/Confusion_Matrix.png")
 
 
 if __name__ == '__main__':
