@@ -1,22 +1,20 @@
 # Reference - https://gist.github.com/danijar/8663d3bbfd586bffecf6a0094cd116f2
-import os
 import warnings
 
 warnings.filterwarnings("ignore")
 from data import belgiumTS
 import tensorflow as tf
-import numpy as np
 import functools
 
 
-def lazy_property(function):
-    attribute = '_cache_' + function.__name__
+def lazy_property(func):
+    attribute = '_cache_' + func.__name__
 
     @property
-    @functools.wraps(function)
+    @functools.wraps(func)
     def decorator(self):
         if not hasattr(self, attribute):
-            setattr(self, attribute, function(self))
+            setattr(self, attribute, func(self))
         return getattr(self, attribute)
 
     return decorator
@@ -76,6 +74,7 @@ class Model:
         accuracy = tf.reduce_mean(tf.cast(correct_predictions, tf.float32))
         return accuracy
 
+
 def main():
     belgiumTS_data = belgiumTS.load_BelgiumTS()
     image = tf.placeholder(tf.float32, [None, 784])
@@ -92,5 +91,7 @@ def main():
             images, labels = belgiumTS_data.train.next_batch(75)
             sess.run(model.optimize, {image: images, label: labels})
         print(belgiumTS_data.train.epochs_completed)
+
+
 if __name__ == '__main__':
     main()

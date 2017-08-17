@@ -3,7 +3,7 @@ import os
 import tensorflow as tf
 
 
-class ModelSession():
+class ModelSession:
     """
     A session of a TensorFlow that may be serialized.
     Overwrite create_graph() to define model graph computation
@@ -36,7 +36,7 @@ class ModelSession():
         # Initialize all global variables
         session.run(tf.global_variables_initializer())
 
-        return (cls(session, tf.train.Saver()))
+        return cls(session, tf.train.Saver())
 
     @staticmethod
     def create_graph(**kwargs):

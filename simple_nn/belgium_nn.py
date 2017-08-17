@@ -150,6 +150,7 @@ class BelgiumTS_NN(ModelSession):
         Evaluate model performance based on the trained object
         :param x: Images
         :param y: Labels
+        :param merged: tf.summary.merge.all()
         :return: accuracy
         """
         summary, accuracy = self.session.run([merged, self.accuracy],
@@ -165,8 +166,8 @@ class BelgiumTS_NN(ModelSession):
         :return: accuracy
         """
         accuracy, preds = self.session.run([self.accuracy, self.predictions],
-                                    feed_dict={self.x: x,
-                                               self.y: y})
+                                           feed_dict={self.x: x,
+                                                      self.y: y})
         return accuracy, preds
 
     def _tensor(self, name):

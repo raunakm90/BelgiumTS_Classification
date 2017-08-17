@@ -13,7 +13,7 @@ import collections
 Datasets = collections.namedtuple('Datasets', ['train', 'validation', 'test'])
 
 
-class DataSet():
+class DataSet:
     def __init__(self, images, labels):
         """Construct a dataset"""
         np.random.seed(4786)
@@ -98,7 +98,7 @@ def load_data(data_directory):
 
 
 def read_datasets_helper(data_directory):
-    '''Returns a list of images'''
+    'Returns a list of images'
     images, labels = load_data(data_directory)
     return images, labels
 
