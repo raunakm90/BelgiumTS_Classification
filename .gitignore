@@ -2,11 +2,10 @@
 data/
 .ipynb-checkpoints/
 .idea/
-simple_nn/log_dir
-simple_nn/model_dir
+tf_mlp/log_dir
+tf_mlp/model_dir
 .ipynb_checkpoints/
 DataExploration.ipynb
 log/
-simple_nn/temp.py
 test.py
 utils/__pycache__/
