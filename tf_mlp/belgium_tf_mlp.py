@@ -274,7 +274,7 @@ def main(argv=None):
     print("Evaluating on Testing data")
     test_pred = test(testing_data, None)
     plot_confusion_matrix(y_true=np.argmax(testing_data.labels, axis=1), y_pred=test_pred,
-                          file_name="./tf_mlp/Confusion_Matrix.png")
+                          file_name="./tf_mlp/figures/Confusion_Matrix.png")
 
 
 if __name__ == '__main__':

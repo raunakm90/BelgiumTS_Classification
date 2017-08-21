@@ -6,7 +6,7 @@ import numpy as np
 from keras.models import Sequential
 from keras.layers import Dense, Activation
 from keras import initializers, optimizers
-from keras.utils.vis_utils import plot_model
+import matplotlib.pyplot as plt
 from sklearn.metrics import accuracy_score
 
 np.random.seed(892)
@@ -56,6 +56,24 @@ def mlp_model():
     return model
 
 
+# Training history for DL models
+def plot_train_val_hist(train_perf, val_perf):
+    # Plot cross entropy loss
+    fig, ax = plt.subplots(figsize=(10, 8))
+    ax.plot(train_perf[:,0], label="Training Loss")
+    ax.plot(val_perf[:,0], label="Validation Loss")
+    ax.set_title("Cross-Entropy Loss")
+    plt.savefig("./keras_mlp/figures/Loss_Epochs.png")
+
+    fig, ax = plt.subplots(figsize=(10, 8))
+    ax.plot(train_perf[:,1], label="Training Accuracy")
+    ax.plot(val_perf[:,1], label="Validation Accuracy")
+    ax.set_title("Accuracy")
+    plt.savefig("./keras_mlp/figures/Accuracy_Epochs.png")
+
+    return None
+
+
 # Difference between model.fit() and model.train_on_batch() -
 # model.fit() - breaks up data into small batches
 # model.train_on_batch - uses the data it gets as a single batch, a single gradient update
@@ -71,14 +89,15 @@ def train(training_data, validation_data):
         for _ in range(training_data.num_examples // BATCH_SIZE):
             x, y = training_data.next_batch(BATCH_SIZE)
             train_perf_batch.append(model.train_on_batch(x=x, y=y))
-        train_perf.append(np.mean(train_perf_batch, axis=1))
+        train_perf.append(np.mean(train_perf_batch, axis=0)) #Average loss and accuracy across batches
+    plot_train_val_hist(np.array(train_perf), np.array(val_perf))
     return model
 
 
 def test(model, testing_data):
     test_preds = model.predict_on_batch(testing_data.images)  # returns probabilities for each class
     test_preds = np.argmax(test_preds, axis=1)
-    print("Test Acc: %0.4f" % (accuracy_score(y_true=testing_data.labels, y_pred=test_preds)))
+    print("Test Acc: %0.4f" % (accuracy_score(y_true=np.argmax(testing_data.labels, axis=1), y_pred=test_preds)))
     return test_preds
 
 
