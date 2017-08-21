@@ -5,7 +5,6 @@ data/
 tf_mlp/log_dir
 tf_mlp/model_dir
 .ipynb_checkpoints/
-DataExploration.ipynb
 log/
 test.py
 utils/__pycache__/
