@@ -7,6 +7,7 @@ from keras.models import Sequential
 from keras.layers import Dense, Activation
 from keras import initializers, optimizers
 import matplotlib.pyplot as plt
+from utils.generate_report import plot_confusion_matrix
 from sklearn.metrics import accuracy_score
 
 np.random.seed(892)
@@ -18,12 +19,12 @@ BATCH_SIZE = 60
 LAYER_1_UNITS = 784
 LAYER_2_UNITS = 196
 LAYER_3_UNITS = 49
-NB_EPOCHS = 10
+NB_EPOCHS = 100
 LR_VAL = 0.001
 
 
 def weight_initializer():
-    return initializers.TruncatedNormal(stddev=0.1)
+    return initializers.TruncatedNormal(stddev=0.1, seed=325)
 
 
 def bias_initializer():
@@ -60,15 +61,17 @@ def mlp_model():
 def plot_train_val_hist(train_perf, val_perf):
     # Plot cross entropy loss
     fig, ax = plt.subplots(figsize=(10, 8))
-    ax.plot(train_perf[:,0], label="Training Loss")
-    ax.plot(val_perf[:,0], label="Validation Loss")
+    ax.plot(train_perf[:, 0], label="Training Loss")
+    ax.plot(val_perf[:, 0], label="Validation Loss")
     ax.set_title("Cross-Entropy Loss")
+    plt.legend()
     plt.savefig("./keras_mlp/figures/Loss_Epochs.png")
 
     fig, ax = plt.subplots(figsize=(10, 8))
-    ax.plot(train_perf[:,1], label="Training Accuracy")
-    ax.plot(val_perf[:,1], label="Validation Accuracy")
+    ax.plot(train_perf[:, 1], label="Training Accuracy")
+    ax.plot(val_perf[:, 1], label="Validation Accuracy")
     ax.set_title("Accuracy")
+    plt.legend()
     plt.savefig("./keras_mlp/figures/Accuracy_Epochs.png")
 
     return None
@@ -89,7 +92,7 @@ def train(training_data, validation_data):
         for _ in range(training_data.num_examples // BATCH_SIZE):
             x, y = training_data.next_batch(BATCH_SIZE)
             train_perf_batch.append(model.train_on_batch(x=x, y=y))
-        train_perf.append(np.mean(train_perf_batch, axis=0)) #Average loss and accuracy across batches
+        train_perf.append(np.mean(train_perf_batch, axis=0))  # Average loss and accuracy across batches
     plot_train_val_hist(np.array(train_perf), np.array(val_perf))
     return model
 
@@ -97,7 +100,9 @@ def train(training_data, validation_data):
 def test(model, testing_data):
     test_preds = model.predict_on_batch(testing_data.images)  # returns probabilities for each class
     test_preds = np.argmax(test_preds, axis=1)
-    print("Test Acc: %0.4f" % (accuracy_score(y_true=np.argmax(testing_data.labels, axis=1), y_pred=test_preds)))
+    true_labels = np.argmax(testing_data.labels, axis=1)
+    plot_confusion_matrix(y_true=true_labels, y_pred=test_preds, file_name="./keras_mlp/figures/ConfusionMatrix.png")
+    print("Test Acc: %0.4f" % (accuracy_score(y_true=true_labels, y_pred=test_preds)))
     return test_preds
 
 
